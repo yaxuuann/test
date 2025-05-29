@@ -209,13 +209,9 @@ st.markdown('<div class="filler"></div>', unsafe_allow_html=True)
 
 # --- Translation function for existing messages ---
 def translate_content(text, from_lang, to_lang):
-    """
-    Translation function that uses both keyword mapping and AI translation.
-    """
     if from_lang == to_lang:
         return text
 
-    # Define translation mappings for quick common phrases
     translations = {
         ("id", "en"): {
             "Kenapa daun sawit saya kuning?": "Why are my palm leaves yellow?",
@@ -231,14 +227,11 @@ def translate_content(text, from_lang, to_lang):
         }
     }
 
-    # Get the appropriate translation dictionary
     trans_dict = translations.get((from_lang, to_lang), {})
 
-    # Try exact match first for common phrases
     if text.strip() in trans_dict:
         return trans_dict[text.strip()]
 
-    # Use AI translation for longer or complex text
     try:
         target_language = "English" if to_lang == "en" else "Indonesian"
         source_language = "Indonesian" if from_lang == "id" else "English"
@@ -260,7 +253,6 @@ def translate_content(text, from_lang, to_lang):
 
         translated_text = response.choices[0].message.content.strip()
 
-        # Clean up the response - remove any extra text
         if "Translation:" in translated_text:
             translated_text = translated_text.split("Translation:")[-1].strip()
         if translated_text.startswith('"') and translated_text.endswith('"'):
@@ -269,7 +261,6 @@ def translate_content(text, from_lang, to_lang):
         return translated_text
 
     except Exception as e:
-        # Fallback to keyword mapping if AI translation fails
         translated_text = text
         sorted_translations = sorted(trans_dict.items(), key=lambda x: len(x[0]), reverse=True)
 
@@ -283,7 +274,7 @@ def translate_content(text, from_lang, to_lang):
 
 # --- Language Selection ---
 if "language" not in st.session_state:
-    st.session_state.language = "id"  # Default: Bahasa Indonesia
+    st.session_state.language = "id"
 
 # --- Text Translations ---
 TEXT = {
@@ -331,11 +322,9 @@ t = TEXT[lang]
 st.markdown('<div class="lang-toggle">', unsafe_allow_html=True)
 lang_toggle = st.button(t["lang_toggle"])
 if lang_toggle:
-    # Store the old language before switching
     old_lang = st.session_state.language
     new_lang = "en" if st.session_state.language == "id" else "id"
 
-    # Translate existing messages when language is switched
     if 'messages' in st.session_state and st.session_state.messages:
         with st.spinner("Translating messages..." if new_lang == "en" else "Menerjemahkan pesan..."):
             translated_messages = []
@@ -349,7 +338,6 @@ if lang_toggle:
 
             st.session_state.messages = translated_messages
 
-    # Switch the language
     st.session_state.language = new_lang
     st.rerun()
 st.markdown('</div>', unsafe_allow_html=True)
@@ -392,7 +380,7 @@ def fetch_recommendations():
         response = requests.get(api_url)
         response.raise_for_status()
         recommendations = response.json()
-        return recommendations
+        return recommendations.get("items", [])
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching recommendations: {e}")
         return None
@@ -432,7 +420,6 @@ example_prompts = {
     ]
 }
 
-# Custom HTML grid for examples with equal spacing
 st.markdown('<div class="example-grid">', unsafe_allow_html=True)
 for i, prompt in enumerate(example_prompts[lang]):
     if st.button(prompt, key=f"example_{i}"):
@@ -447,8 +434,16 @@ if st.button(t["fetch_recommendations"]):
     recommendations = fetch_recommendations()
     if recommendations:
         st.subheader(t["recommendations"])
-        for item in recommendations.get("items", []):
-            st.write(f"**{item['product_name_en']}** - Price: {item['price']} - Relevance: {item['relevance_score']}")
+        for item in recommendations:
+            st.markdown(f"""
+            <div class="chat-container bot">
+                <div class="chat-icon bot-icon"></div>
+                <div class="chat-bubble bot-bubble">
+                    <strong>Name:</strong> {item['product_name_en']}<br>
+                    <strong>Price:</strong> {item['price']}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # --- User Input ---
 def process_user_input():
@@ -457,9 +452,8 @@ def process_user_input():
         st.session_state.messages.append({"role": "user", "content": user_message})
         bot_response = generate_response(user_message)
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
-        st.session_state.user_input = ""  # Clear input field
+        st.session_state.user_input = ""
 
-# Input area with better alignment
 col1, col2 = st.columns([4, 1])
 with col1:
     st.text_input(t["input_placeholder"], key="user_input", on_change=process_user_input)
